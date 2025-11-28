@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOTAL SILOUN MOLINO - Firebase Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    
+    <!-- ⚙️ إضافة مكتبات Firebase الضرورية (Client SDK v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <!-- تنسيقات CSS (تم تقصيرها) -->
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; color: #333; text-align: right; }
+        .container { padding: 25px; max-width: 700px; margin: 20px auto; background-color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 12px; }
+        h1 { border-bottom: 3px solid #3498db; padding-bottom: 15px; margin-bottom: 25px; text-align: center; color: #2c3e50; }
+        h2 { font-size: 1.2rem; margin-top: 25px; margin-bottom: 15px; border-right: 4px solid #3498db; padding-right: 10px; color: #2c3e50; }
+        input, select, button { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 16px; font-family: 'Segoe UI', sans-serif; }
+        input[type="number"] { direction: ltr; text-align: right; }
+        button { background-color: #28a745; color: white; cursor: pointer; border: none; font-weight: bold; transition: 0.3s; }
+        button:hover { background-color: #218838; transform: translateY(-1px); }
+        .danger-btn { background-color: #dc3545; }
+        .secondary-btn { background-color: #6c757d; }
+        .small-btn { width: auto; padding: 5px 10px; font-size: 12px; margin: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { border: 1px solid #e9ecef; padding: 8px; text-align: center; }
+        th { background-color: #3498db; color: white; }
+        td { direction: ltr; unicode-bidi: embed; }
+        .gauge-container { margin-bottom: 20px; padding: 15px; border: 1px solid #e9ecef; border-radius: 8px; background-color: #f8f9fa; }
+        .gauge-labels { display: flex; justify-content: space-between; direction: ltr; margin-bottom: 8px; }
+        .gauge-wrapper { display: flex; align-items: center; gap: 4px; height: 30px; }
+        .gauge-main { flex-grow: 1; background-color: #e9ecef; border-radius: 6px 0 0 6px; height: 100%; overflow: hidden; position: relative; }
+        .gauge-extension { width: 20%; background-color: #dedede; border-radius: 0 6px 6px 0; height: 100%; overflow: hidden; position: relative; border-left: 2px dashed #bbb; }
+        .fill-bar { height: 100%; width: 0%; transition: width 0.6s ease; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; }
+        .blinking { animation: blinker var(--blink-speed) linear infinite; } @keyframes blinker { 50% { opacity: 0.7; } }
+        #ai-card { background: linear-gradient(135deg, #f0f9ff 0%, #e1f5fe 100%); border: 1px solid #b3e5fc; border-radius: 10px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .ai-header { background-color: #0288d1; color: white; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .ai-body { padding: 15px; }
+        .ai-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .ai-stat-box { background: white; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #b3e5fc; }
+        .ai-value { display: block; font-size: 1.1rem; font-weight: bold; color: #0277bd; font-family: sans-serif; }
+        .ai-label { font-size: 0.75rem; color: #546e7a; }
+        .ai-insights { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; }
+        .ai-insights li { padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.6); margin-bottom: 5px; border-radius: 4px; }
+        .charts-modal, .settings-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); }
+        .charts-content, .settings-content { background-color: #fefefe; margin: 2% auto; padding: 20px; width: 95%; max-width: 700px; border-radius: 12px; }
+        #auth-page { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #3498db; }
+        .auth-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 90%; max-width: 400px; text-align: center; }
+        .options-menu-btn { position: absolute; top: 20px; left: 20px; font-size: 24px; background: none; border: none; cursor: pointer; color: #333; width: auto; padding: 5px; margin-bottom: 0; }
+    </style>
+</head>
+<body>
+
+<!-- صفحة المصادقة -->
+<div id="auth-page">
+    <div class="auth-box">
+        <h2 id="auth-title">تسجيل الدخول 👋</h2>
+        <form id="authForm">
+            <label style="display: block; text-align: right; margin-bottom: 5px;">البريد الإلكتروني (بدلاً من اسم المستخدم):</label>
+            <input type="email" id="emailInput" required placeholder="example@domain.com">
+            
+            <label style="display: block; text-align: right; margin-bottom: 5px;">كلمة المرور:</label>
+            <input type="password" id="passwordInput" required placeholder="كلمة المرور">
+            
+            <p id="authMessage" class="auth-message" style="display: none; color:red;"></p>
+            
+            <button type="submit" id="authButton">دخول</button>
+            <span id="toggleAuth" class="toggle-link" onclick="toggleAuthMode()">إنشاء حساب جديد</span>
+        </form>
+    </div>
+</div>
+
+<!-- التطبيق الرئيسي (تم تقصيره) -->
+<div id="main-app" class="container" style="display:none;">
+    <button class="options-menu-btn" onclick="showSettingsModal()">⚙️</button>
+    <h1>🏭 TOTAL SILOUN MOLINO <span style="font-size:0.5em; color:#777;">AI V4.5</span></h1>
+    <div style="text-align: left; margin-bottom: 15px;">
+        <span style="font-size: 0.8em; color: #666;">مرحباً بك، <strong id="loggedInUser"></strong></span>
+        <button class="danger-btn small-btn" onclick="logout()" style="width: auto; margin-right: 10px;">خروج</button>
+    </div>
+    <hr>
+    <h2>📝 تسجيل البيانات</h2>
+    <form id="entryForm">
+        <label>اختيار الخزان:</label>
+        <select id="silounSelect" required></select>
+        <label>الوزن الحالي (<span id="maxWeightDisplay">Max T</span>):</label>
+        <input type="number" id="weightInput" min="0" step="0.01" required placeholder="مثال: 64.50">
+        <label>وقت التسجيل:</label>
+        <input type="datetime-local" id="dateTimeInput" required>
+        <button type="submit">✅ تسجيل القراءة</button>
+    </form>
+    <hr>
+    <h2>📊 حالة الخزانات (نظام التمديد)</h2>
+    <div id="gauges"></div>
+    <div id="ai-card">
+        <div class="ai-header"><span>🤖 التحليل الذكي للأداء</span><span id="liveStatus" style="font-size: 0.7rem; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">جاري التحليل...</span></div>
+        <div class="ai-body">
+            <div class="ai-stats-grid">
+                <div class="ai-stat-box"><span class="ai-value" id="aiSpeed">0.0</span><span class="ai-label">السرعة (طن/ساعة)</span></div>
+                <div class="ai-stat-box"><span class="ai-value" id="aiTotal">0.00</span><span class="ai-label">إنتاج الجلسة</span></div>
+                <div class="ai-stat-box"><span class="ai-value" id="aiBestDay">-</span><span class="ai-label">أفضل يوم (سابق)</span></div>
+            </div>
+            <h4 style="margin: 10px 0 5px 0; font-size: 0.9rem; color: #0277bd;">📋 التوصيات والملاحظات:</h4>
+            <ul class="ai-insights" id="aiInsightsList"><li>يرجى إدخال بيانات لبدء التحليل...</li></ul>
+        </div>
+    </div>
+    <hr>
+    <button class="secondary-btn" onclick="showChartsModal()">📊 عرض الرسوم البيانية التفاعلية</button>
+    <hr>
+    <h2>📑 السجل الحالي</h2>
+    <table id="recordsTable">
+        <thead><tr><th>الوقت</th><th>الخزان</th><th>الوزن</th><th>الفرق</th><th>حذف</th></tr></thead>
+        <tbody id="recordsBody"></tbody>
+    </table>
+    <hr>
+    <div style="display: flex; gap: 10px;">
+        <button class="danger-btn" onclick="endWork()" style="flex: 1;">🔴 إنهاء وحفظ للأرشيف</button>
+        <button class="secondary-btn" onclick="viewHistory()" style="flex: 1;">📂 الأرشيف والمقارنة</button>
+    </div>
+    <div class="backup-section">
+        <h3 style="margin-top: 0; font-size: 1rem;">💾 أدوات النظام</h3>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <button class="secondary-btn small-btn" onclick="exportData()">⬇️ تحميل Backup</button>
+            <input type="file" id="importFile" accept=".json" style="padding: 5px;" onchange="importData(this)">
+        </div>
+    </div>
+</div>
+
+<!-- المودال الخاص بالرسوم البيانية (Modal) (تم تقصيره) -->
+<div id="chartsModal" class="charts-modal">
+    <div class="charts-content">
+        <h2 style="display: flex; justify-content: space-between; align-items: center;">
+            <span>📈 الرسوم البيانية التفاعلية</span>
+            <button class="danger-btn small-btn" onclick="hideChartsModal()" style="margin: 0; width: auto;">إغلاق ✖️</button>
+        </h2>
+        <div class="chart-container" style="height: 350px;">
+            <h4>الأوزان التراكمية الحالية (T) - كل خزان</h4>
+            <canvas id="currentWeightsChart"></canvas>
+        </div>
+        <div class="chart-container" style="height: 350px;">
+            <h4>فروقات الأوزان (طن) - الجلسة الحالية</h4>
+            <canvas id="currentDifferencesChart"></canvas>
+        </div>
+        <div class="chart-container" style="height: 350px;">
+            <h4>إجمالي الإنتاج اليومي (T) - الأرشيف</h4>
+            <canvas id="historyTotalChart"></canvas>
+        </div>
+        <div class="chart-container" style="height: 350px;">
+            <h4>متوسط سرعة الإنتاج (T/h) - الأرشيف</h4>
+            <canvas id="historySpeedChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- المودال الخاص بالإعدادات (تم تقصيره) -->
+<div id="settingsModal" class="settings-modal">
+    <div class="settings-content">
+        <h2 style="display: flex; justify-content: space-between; align-items: center;">
+            <span>⚙️ إعدادات المصنع المتقدمة</span>
+            <button class="danger-btn small-btn" onclick="hideSettingsModal()" style="margin: 0; width: auto;">إغلاق ✖️</button>
+        </h2>
+        <form id="settingsForm">
+            <h3>🎨 إعدادات التنسيق البصري</h3>
+            <label for="blinkSpeedInput">سرعة وميض التنبيه (ثانية):</label>
+            <div class="input-group"><input type="number" id="blinkSpeedInput" min="0.1" max="2" step="0.1" required><span>ثانية</span></div>
+            <label for="highWeightColorInput">لون التعبئة العالية (90% من السعة):</label><input type="color" id="highWeightColorInput" required>
+            <label for="extensionColorInput">لون وضع التمديد (فوق السعة المقدرة):</label><input type="color" id="extensionColorInput" required>
+            <h3 style="margin-top: 30px;">🛢️ إدارة الخزانات والسعات</h3>
+            <div id="siloSettingsContainer"></div>
+            <button type="button" class="secondary-btn small-btn" onclick="addSiloSetting()" style="width: auto;">➕ إضافة خزان جديد</button><hr>
+            <button type="submit" style="margin-top: 20px;">💾 حفظ الإعدادات وتطبيقها</button>
+            <p id="settingsMessage" style="color: green; font-weight: bold; display: none; margin-top: 10px;">✅ تم حفظ الإعدادات بنجاح.</p>
+            <hr style="margin-top: 20px;"><h3 style="color: #dc3545;">⚠️ إعادة ضبط المصنع (Format)</h3>
+            <p style="font-size: 0.85rem; color: #6c757d;">هذا الإجراء سيحذف **جميع** البيانات (السجلات، الأرشيف، المستخدمين، والإعدادات) من **Firebase** بشكل دائم.</p>
+            <button type="button" class="reset-btn" onclick="factoryReset()">🔥 حذف جميع البيانات</button>
+        </form>
+    </div>
+</div>
+
+<!-- صفحة الأرشيف (تم تقصيره) -->
+<div id="historyPage" class="container" style="display:none;">
+    <h2>📂 الأرشيف التاريخي</h2>
+    <div style="background:#e8f5e9; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #c8e6c9;">
+        <strong>🏆 القاعة الشرفية:</strong> أفضل إنتاج مسجل كان بتاريخ <span id="bestDateDisplay"></span> بكمية <strong id="bestAmountDisplay"></strong> طن.
+    </div>
+    <table id="historyTable">
+        <thead><tr><th>التاريخ</th><th>الإجمالي (T)</th><th>السرعة (T/h)</th><th>خيارات</th></tr></thead> 
+        <tbody id="historyBody"></tbody>
+    </table>
+    <button style="margin-top: 20px;" onclick="hideHistory()" class="secondary-btn">🔙 عودة</button>
+</div>
+
+<!-- تفاصيل الجلسة (Modal) (تم تقصيره) -->
+<div id="sessionDetailsModal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div style="background-color: #fefefe; margin: 5% auto; padding: 25px; width: 90%; max-width: 500px; border-radius: 12px;">
+        <h3 style="margin-top:0;">تفاصيل الجلسة</h3>
+        <div id="modalAiSummary" class="ai-summary-box"></div> 
+        <div style="max-height: 300px; overflow-y: auto;">
+            <table id="modalRecordsTable">
+                <thead><tr><th>الوقت</th><th>الخزان</th><th>الوزن</th><th>الفرق</th></tr></thead>
+                <tbody id="modalRecordsBody"></tbody>
+            </table>
+        </div>
+        <button onclick="document.getElementById('sessionDetailsModal').style.display='none'" class="danger-btn small-btn" style="float: right; margin-top: 15px;">إغلاق</button>
+        <div style="clear: both;"></div>
+    </div>
+</div>
+
+
+<script>
+    // ==========================================
+    // ☁️ إعدادات وثوابت Firebase
+    // ==========================================
+    
+    // ✅ تم تحديث هذه القيم بناءً على إعدادات مشروعك "siloun"
+    const firebaseConfig = {
+        apiKey: "AIzaSyCXeIS89Cd0DKz7BTsIfQDr3Ckb544dR8k",
+        authDomain: "siloun.firebaseapp.com",
+        databaseURL: "https://siloun-default-rtdb.firebaseio.com", // استخدام صيغة RTDB الافتراضية
+        projectId: "siloun",
+        storageBucket: "siloun.firebasestorage.app",
+        messagingSenderId: "111587591132",
+        appId: "1:111587591132:web:0b7e481138e8885076c519"
+    };
+    
+    // تهيئة Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    // مسارات قاعدة البيانات
+    const DB_ROOT_PATH = 'molino_app_data/';
+    const SETTINGS_PATH = 'settings'; 
+    const ADMIN_EMAIL = 'admin@molino.com'; // يجب استخدامه للمستخدم الإداري (غير مستخدم بالكامل هنا)
+    
+    let currentUserId = null; 
+    let AppSettings = {}; 
+    let currentSessionRecords = []; 
+    let lastKnownWeights = {}; 
+    let currentAiAnalysis = {}; 
+    let authMode = 'login'; 
+
+    const DEFAULT_SETTINGS = {
+        BLINK_SPEED: 1.0, 
+        HIGH_WEIGHT_COLOR: '#ffc107', 
+        EXTENSION_COLOR: '#dc3545',   
+        NORMAL_COLOR: '#28a745',      
+        SILOS: [
+            { id: 1, name: 'Siloun 1', ratedCapacity: 63.0, maxExtension: 75.0 },
+            { id: 2, name: 'Siloun 2', ratedCapacity: 63.0, maxExtension: 75.0 },
+            { id: 3, name: 'Siloun 3', ratedCapacity: 63.0, maxExtension: 75.0 },
+            { id: 4, name: 'Siloun 4', ratedCapacity: 63.0, maxExtension: 75.0 }
+        ],
+    };
+    
+    // ==========================================
+    // 🔐 وظائف المصادقة (Firebase Auth)
+    // ==========================================
+    
+    auth.onAuthStateChanged((user) => {
+        hideAllPages();
+        if (user) {
+            currentUserId = user.uid;
+            
+            // المستخدم الإداري (يتم تحديده من خلال البريد الإلكتروني)
+            if (user.email === ADMIN_EMAIL) {
+                // تم إزالة شاشة الإدارة لتقصير الكود
+                // alert('تم تسجيل الدخول كمسؤول. لا توجد شاشة إدارة في هذا المثال.');
+                // logout(); // تسجيل الخروج مباشرة لتبسيط الكود
+                // return;
+            }
+
+            document.getElementById('main-app').style.display = 'block';
+            document.getElementById('loggedInUser').textContent = user.email;
+            loadInitialData(); 
+        } else {
+            currentUserId = null;
+            document.getElementById('auth-page').style.display = 'flex';
+        }
+    });
+
+    function hideAllPages() {
+        document.getElementById('auth-page').style.display = 'none';
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('historyPage').style.display = 'none';
+        document.getElementById('sessionDetailsModal').style.display = 'none';
+        document.getElementById('chartsModal').style.display = 'none';
+        document.getElementById('settingsModal').style.display = 'none'; 
+    }
+
+    function toggleAuthMode() {
+        const title = document.getElementById('auth-title');
+        const button = document.getElementById('authButton');
+        const link = document.getElementById('toggleAuth');
+        const emailInput = document.getElementById('emailInput');
+
+        if (authMode === 'login') {
+            authMode = 'register';
+            title.textContent = 'إنشاء حساب جديد ✨';
+            button.textContent = 'تسجيل';
+            link.textContent = 'لدي حساب بالفعل (تسجيل دخول)';
+        } else {
+            authMode = 'login';
+            title.textContent = 'تسجيل الدخول 👋';
+            button.textContent = 'دخول';
+            link.textContent = 'إنشاء حساب جديد';
+        }
+        document.getElementById('authMessage').style.display = 'none';
+        emailInput.value = '';
+        document.getElementById('passwordInput').value = '';
+    }
+
+    document.getElementById('authForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('emailInput').value.trim();
+        const password = document.getElementById('passwordInput').value.trim();
+        const message = document.getElementById('authMessage');
+
+        message.style.display = 'none';
+
+        if (authMode === 'register') {
+            if (email === ADMIN_EMAIL) {
+                message.textContent = '❌ اسم المستخدم هذا محجوز للإدارة.';
+                message.style.display = 'block';
+                return;
+            }
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(() => {
+                    message.textContent = '✅ تم التسجيل بنجاح. يرجى تسجيل الدخول.';
+                    message.style.display = 'block';
+                    message.style.color = 'green';
+                    toggleAuthMode();
+                })
+                .catch(error => {
+                    message.textContent = `❌ خطأ في التسجيل: ${error.message}`;
+                    message.style.display = 'block';
+                    message.style.color = 'red';
+                });
+        } else {
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(error => {
+                    message.textContent = `❌ خطأ في الدخول: ${error.message}`;
+                    message.style.display = 'block';
+                    message.style.color = 'red';
+                });
+        }
+    });
+
+    function logout() {
+        if(confirm('هل أنت متأكد من تسجيل الخروج؟')) {
+            auth.signOut();
+        }
+    }
+    
+    // ==========================================
+    // ☁️ وظائف التخزين السحابي (Firebase DB)
+    // ==========================================
+
+    function loadSettings() {
+        return database.ref(DB_ROOT_PATH + SETTINGS_PATH).once('value')
+            .then(snapshot => {
+                AppSettings = { ...DEFAULT_SETTINGS, ...snapshot.val() };
+                // التأكد من أن حقل SILOS مصفوفة وأن كل عنصر يحتوي على ID
+                if (!Array.isArray(AppSettings.SILOS)) {
+                    AppSettings.SILOS = DEFAULT_SETTINGS.SILOS;
+                }
+                AppSettings.SILOS = AppSettings.SILOS.map((s, i) => ({ ...s, id: s.id || (i + 1) }));
+                applySettingsToUI();
+            })
+            .catch(() => {
+                AppSettings = DEFAULT_SETTINGS;
+                applySettingsToUI();
+                saveSettings(); // حفظ الإعدادات الافتراضية إذا لم يتم العثور عليها
+            });
+    }
+
+    function saveSettings() {
+        // حذف المفتاح غير الضروري قبل الحفظ
+        const settingsToSave = JSON.parse(JSON.stringify(AppSettings));
+        delete settingsToSave.NORMAL_COLOR; 
+        
+        return database.ref(DB_ROOT_PATH + SETTINGS_PATH).set(settingsToSave);
+    }
+    
+    function loadUserSessionData() {
+        if (!currentUserId) return Promise.resolve();
+        // نقوم بالتحميل من مسار المستخدم الخاص به
+        return database.ref(DB_ROOT_PATH + 'sessions/' + currentUserId).once('value')
+            .then(snapshot => {
+                const stored = snapshot.val();
+                // تحويل الكائن إلى مصفوفة (لأننا نستخدم مفتاح ID في الكود)
+                currentSessionRecords = stored ? Object.values(stored) : [];
+                
+                lastKnownWeights = {}; 
+                AppSettings.SILOS.map(s => s.name).forEach(siloName => {
+                    const recs = currentSessionRecords
+                        .filter(r => r.siloun === siloName)
+                        .sort((a,b) => a.id - b.id); 
+                    lastKnownWeights[siloName] = recs.length ? parseFloat(recs[recs.length-1].weight) : 0;
+                });
+            });
+    }
+
+    function saveUserSessionData() {
+        if (!currentUserId) return Promise.resolve();
+        
+        // تحويل المصفوفة إلى كائنات بـ ID كـ مفتاح (لتحسين أداء Firebase)
+        const sessionObject = currentSessionRecords.reduce((obj, rec) => {
+            obj[rec.id] = rec;
+            return obj;
+        }, {});
+        
+        return database.ref(DB_ROOT_PATH + 'sessions/' + currentUserId).set(sessionObject);
+    }
+    
+    function loadUserHistory() {
+        if (!currentUserId) return Promise.resolve([]);
+        return database.ref(DB_ROOT_PATH + 'history/' + currentUserId).once('value')
+            .then(snapshot => {
+                 const stored = snapshot.val();
+                 // تحويل الكائن إلى مصفوفة
+                 return stored ? Object.values(stored) : [];
+            });
+    }
+
+    function saveUserHistory(historyData) {
+        if (!currentUserId) return Promise.resolve();
+        
+        // تحويل المصفوفة إلى كائنات (باستخدام timeStamp كمفتاح)
+        const historyObject = historyData.reduce((obj, rec) => {
+            obj[new Date(rec.date).getTime()] = rec; 
+            return obj;
+        }, {});
+
+        return database.ref(DB_ROOT_PATH + 'history/' + currentUserId).set(historyObject);
+    }
+
+    // ==========================================
+    // 🏗️ التهيئة وتحديث البيانات
+    // ==========================================
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateDateTime(); 
+    });
+
+    async function loadInitialData() {
+        // 1. تحميل إعدادات المصنع العامة
+        await loadSettings(); 
+        
+        // 2. تحميل جلسة المستخدم الحالية
+        await loadUserSessionData(); 
+        
+        // 3. تحديث واجهة المستخدم
+        updateAllGauges();
+        renderRecords();
+        performSmartAIAnalysis(); 
+    }
+    
+    // ... (بقية وظائف المساعدة تبقى كما هي) ...
+
+    function formatDateTimeEnglish(isoString) {
+        if (!isoString) return '-';
+        const date = new Date(isoString);
+        return date.toLocaleString('en-GB', { hour12: false }).replace(',', '');
+    }
+    
+    function formatDateOnly(isoString) {
+        if (!isoString) return '-';
+        const date = new Date(isoString);
+        return date.toLocaleDateString('en-GB');
+    }
+
+    function updateDateTime() {
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        document.getElementById('dateTimeInput').value = new Date(now.getTime() - offset).toISOString().slice(0, 16);
+    }
+    
+    function getSiloSettings(name) {
+        return AppSettings.SILOS.find(s => s.name === name);
+    }
+
+    function applySettingsToUI() {
+        document.documentElement.style.setProperty('--blink-speed', `${AppSettings.BLINK_SPEED}s`);
+        const maxOverallExtension = AppSettings.SILOS.reduce((max, s) => Math.max(max, s.maxExtension), 0);
+        const maxWeightDisplay = document.getElementById('maxWeightDisplay');
+        if (maxWeightDisplay) {
+            maxWeightDisplay.textContent = `Max ${maxOverallExtension.toFixed(1)}T`;
+        }
+        updateSiloDropdown();
+        setupGauges();
+        updateAllGauges();
+    }
+    
+    function updateSiloDropdown() {
+        const select = document.getElementById('silounSelect');
+        if (select) {
+            select.innerHTML = AppSettings.SILOS.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+            
+            select.onchange = () => {
+                const selectedSiloName = select.value;
+                const selectedSilo = AppSettings.SILOS.find(s => s.name === selectedSiloName);
+                if (selectedSilo) {
+                     document.getElementById('weightInput').max = selectedSilo.maxExtension;
+                     document.getElementById('maxWeightDisplay').textContent = `Max ${selectedSilo.maxExtension.toFixed(1)}T`;
+                }
+            };
+            if(AppSettings.SILOS.length > 0) {
+                 document.getElementById('weightInput').max = AppSettings.SILOS[0].maxExtension;
+                 document.getElementById('maxWeightDisplay').textContent = `Max ${AppSettings.SILOS[0].maxExtension.toFixed(1)}T`;
+            }
+        }
+    }
+
+    function setupGauges() {
+        document.getElementById('gauges').innerHTML = AppSettings.SILOS.map(silo => {
+            const RATED_CAPACITY = silo.ratedCapacity;
+            const MAX_EXTENSION = silo.maxExtension;
+            const siloName = silo.name;
+            const id = siloName.replace(/\s/g,'');
+            
+            return `
+                <div class="gauge-container">
+                    <div class="gauge-labels">
+                        <strong>${siloName}</strong>
+                        <strong style="font-family:sans-serif;"><span id="w-${id}">0.00</span> T</strong>
+                    </div>
+                    <div class="gauge-wrapper">
+                        <div class="gauge-main"><div id="bar-m-${id}" class="fill-bar" style="background:${AppSettings.NORMAL_COLOR};"></div></div>
+                        <div class="gauge-extension"><div id="bar-e-${id}" class="fill-bar" style="background:${AppSettings.EXTENSION_COLOR};"></div></div>
+                    </div>
+                    <div class="gauge-sub-labels"><span>0</span><span style="margin-right:-15%">${RATED_CAPACITY.toFixed(1)}</span><span>${MAX_EXTENSION.toFixed(1)}</span></div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateGauge(siloName, weight) {
+        const siloSettings = getSiloSettings(siloName);
+        if (!siloSettings) return;
+
+        const RATED_CAPACITY = siloSettings.ratedCapacity;
+        const MAX_EXTENSION = siloSettings.maxExtension;
+
+        const id = siloName.replace(/\s/g,'');
+        const w = typeof weight === 'string' ? parseFloat(weight) : weight; 
+
+        const wDisplay = document.getElementById(`w-${id}`);
+        const mBar = document.getElementById(`bar-m-${id}`);
+        const eBar = document.getElementById(`bar-e-${id}`);
+        
+        if (!wDisplay || !mBar || !eBar) return; 
+
+        wDisplay.textContent = w.toFixed(2);
+
+        if (w <= RATED_CAPACITY) {
+            mBar.style.width = `${(w/RATED_CAPACITY)*100}%`;
+            eBar.style.width = '0%';
+            mBar.style.backgroundColor = w >= (RATED_CAPACITY * 0.9) ? AppSettings.HIGH_WEIGHT_COLOR : AppSettings.NORMAL_COLOR;
+            eBar.textContent = "";
+            eBar.classList.remove('blinking');
+        } else {
+            mBar.style.width = '100%';
+            mBar.style.backgroundColor = AppSettings.HIGH_WEIGHT_COLOR; 
+            
+            const extensionRange = MAX_EXTENSION - RATED_CAPACITY;
+            const extendedWeight = w - RATED_CAPACITY;
+            
+            const extP = (extendedWeight / extensionRange) * 100;
+            
+            eBar.style.width = `${Math.min(extP, 100)}%`;
+            eBar.textContent = "EXT";
+            eBar.style.backgroundColor = AppSettings.EXTENSION_COLOR;
+            
+            if (w >= MAX_EXTENSION) {
+                 eBar.classList.add('blinking');
+            } else {
+                 eBar.classList.remove('blinking');
+            }
+        }
+    }
+
+    function updateAllGauges() { 
+        AppSettings.SILOS.map(s => s.name).forEach(s => updateGauge(s, lastKnownWeights[s]||0)); 
+    }
+    
+    document.getElementById('entryForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const s = document.getElementById('silounSelect').value;
+        const w = parseFloat(document.getElementById('weightInput').value);
+        const dt = document.getElementById('dateTimeInput').value;
+        const newTime = new Date(dt).getTime();
+        
+        const siloSettings = getSiloSettings(s);
+        if (!siloSettings) return alert('خطأ: لم يتم العثور على إعدادات الخزان.');
+
+        if (w > siloSettings.maxExtension) return alert(`خطأ: الوزن يتجاوز ${siloSettings.maxExtension.toFixed(1)} طن لهذا الخزان!`);
+
+        if (currentSessionRecords.length > 0) {
+            const sortedRecords = [...currentSessionRecords].sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime));
+            const lastRecordedTime = new Date(sortedRecords[0].dateTime).getTime();
+            if (newTime < lastRecordedTime) {
+                alert(`خطأ في التسلسل الزمني: لا يمكن إدخال قراءة سابقة لوقت آخر سجل (${formatDateTimeEnglish(sortedRecords[0].dateTime)})`);
+                return; 
+            }
+        }
+        
+        const prev = lastKnownWeights[s] || 0;
+        let diff = 'بداية';
+        
+        if (currentSessionRecords.filter(r=>r.siloun === s).length > 0 || prev > 0) {
+             diff = (w - prev).toFixed(2);
+        }
+
+        currentSessionRecords.push({ id: Date.now(), dateTime: dt, siloun: s, weight: w.toFixed(2), difference: diff });
+        
+        lastKnownWeights[s] = w;
+        
+        await saveUserSessionData(); // ☁️ حفظ البيانات في Firebase
+        
+        renderRecords();
+        updateGauge(s, w);
+        performSmartAIAnalysis(); 
+        
+        document.getElementById('weightInput').value = '';
+        updateDateTime();
+    });
+
+    async function deleteRecord(id) {
+        if(!confirm('حذف السجل؟')) return;
+        
+        const idx = currentSessionRecords.findIndex(r=>r.id===id);
+        if(idx===-1) return;
+        const silo = currentSessionRecords[idx].siloun;
+        currentSessionRecords.splice(idx,1);
+        
+        let siloRecs = currentSessionRecords
+            .filter(r=>r.siloun===silo)
+            .sort((a,b)=>a.id - b.id); 
+
+        
+        siloRecs.forEach((r,i) => {
+            if(i === 0) {
+                r.difference = 'بداية';
+            } else {
+                const prevWeight = parseFloat(siloRecs[i - 1].weight);
+                r.difference = (parseFloat(r.weight) - prevWeight).toFixed(2);
+            }
+        });
+        
+        lastKnownWeights[silo] = siloRecs.length ? parseFloat(siloRecs[siloRecs.length-1].weight) : 0;
+        
+        await saveUserSessionData(); // ☁️ حفظ البيانات في Firebase بعد الحذف
+        
+        renderRecords();
+        updateAllGauges();
+        performSmartAIAnalysis();
+    }
+
+    function renderRecords() {
+        const tb = document.getElementById('recordsBody');
+        tb.innerHTML = '';
+        [...currentSessionRecords].reverse().forEach(r => {
+            const diffColor = parseFloat(r.difference) > 0 ? 'green' : (parseFloat(r.difference) < 0 ? 'red' : 'inherit');
+            tb.innerHTML += `<tr>
+                <td>${formatDateTimeEnglish(r.dateTime)}</td>
+                <td>${r.siloun}</td>
+                <td>${r.weight}</td>
+                <td style="color:${diffColor}">${r.difference}</td>
+                <td><button class="danger-btn small-btn" onclick="deleteRecord(${r.id})">❌</button></td>
+            </tr>`;
+        });
+    }
+
+    function performSmartAIAnalysis() {
+        const insightsList = document.getElementById('aiInsightsList');
+        const aiSpeed = document.getElementById('aiSpeed');
+        const aiTotal = document.getElementById('aiTotal');
+        const aiBestDay = document.getElementById('aiBestDay');
+        const liveStatus = document.getElementById('liveStatus');
+
+        if (currentSessionRecords.length === 0) {
+            aiSpeed.textContent = "0.0";
+            aiTotal.textContent = "0.00";
+            liveStatus.textContent = "بداية 💤";
+            liveStatus.style.background = "#999";
+            liveStatus.style.color = "white";
+            insightsList.innerHTML = '<li>يرجى إدخال بيانات لبدء التحليل...</li>';
+            return;
+        }
+
+        insightsList.innerHTML = '';
+        let insights = [];
+        let totalDurationHrs = 0;
+        let finalSpeed = 0;
+        let lastUpdateTime = "غير محدد";
+
+        let totalCurrent = 0;
+        currentSessionRecords.forEach(r => {
+            const v = parseFloat(r.difference);
+            if(v > 0) totalCurrent += v; 
+        });
+        aiTotal.textContent = totalCurrent.toFixed(2);
+
+        loadUserHistory().then(history => {
+            let maxHistTotal = 0;
+            let bestDateStr = 'لا يوجد';
+            let histTotals = [];
+            
+            history.forEach(h => {
+                const t = parseFloat(h.total);
+                histTotals.push(t);
+                if(t > maxHistTotal) {
+                    maxHistTotal = t;
+                    bestDateStr = formatDateOnly(h.date); 
+                }
+            });
+            aiBestDay.textContent = maxHistTotal > 0 ? `${maxHistTotal} (${bestDateStr})` : '-';
+        });
+
+        if (currentSessionRecords.length > 1) {
+            const sorted = [...currentSessionRecords].sort((a,b) => new Date(a.dateTime) - new Date(b.dateTime));
+            const startTime = new Date(sorted[0].dateTime);
+            const endTime = new Date(sorted[sorted.length-1].dateTime);
+            totalDurationHrs = (endTime - startTime) / 3600000; 
+            lastUpdateTime = formatDateTimeEnglish(endTime.toISOString());
+            
+            if (totalDurationHrs > 0.1) { 
+                finalSpeed = totalCurrent / totalDurationHrs;
+                aiSpeed.textContent = finalSpeed.toFixed(1);
+                liveStatus.textContent = "يعمل ⚡";
+                liveStatus.style.background = "#4caf50";
+                liveStatus.style.color = "white";
+            } else {
+                liveStatus.textContent = "بداية العمل...";
+            }
+
+            const lastRec = sorted[sorted.length-1];
+            const prevRec = sorted[sorted.length-2];
+            
+            const lastSiloSettings = getSiloSettings(lastRec.siloun);
+            if (lastSiloSettings && lastRec.siloun === prevRec.siloun) {
+                const RATED_CAPACITY = lastSiloSettings.ratedCapacity;
+                const timeDiff = (new Date(lastRec.dateTime) - new Date(prevRec.dateTime)) / 3600000;
+                const weightDiff = parseFloat(lastRec.weight) - parseFloat(prevRec.weight);
+                
+                if (timeDiff > 0 && weightDiff > 0.5) { 
+                    const currentRate = weightDiff / timeDiff; 
+                    const currentW = parseFloat(lastRec.weight);
+                    
+                    if (currentRate > 1) { 
+                        const remainingToCapacity = RATED_CAPACITY - currentW;
+                        if (remainingToCapacity > 0) {
+                            const hoursLeft = remainingToCapacity / currentRate;
+                            const fullTime = new Date(endTime.getTime() + (hoursLeft * 3600000));
+                            insights.push(`⏱️ **توقع:** سيمتلئ ${lastRec.siloun} (${RATED_CAPACITY.toFixed(1)}T) حوالي الساعة ${fullTime.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'})}.`);
+                        }
+                    }
+                }
+            }
+            
+            const now = new Date();
+            const minutesSinceLast = (now - endTime) / 60000;
+            if (minutesSinceLast > 45) {
+                insights.push(`⚠️ **تنبيه:** الطحن متوقف منذ ${minutesSinceLast.toFixed(0)} دقيقة.`);
+                liveStatus.textContent = "متوقف 💤";
+                liveStatus.style.background = "#dc3545"; 
+            } else if (minutesSinceLast > 15) {
+                insights.push(`⏳ **ملاحظة:** لم يتم إدخال قراءة جديدة منذ ${minutesSinceLast.toFixed(0)} دقيقة.`);
+            }
+
+        } else {
+            insights.push("ℹ️ أدخل قراءة ثانية لحساب السرعة والتوقعات.");
+        }
+
+        AppSettings.SILOS.forEach(silo => {
+            const w = lastKnownWeights[silo.name] || 0;
+            const RATED_CAPACITY = silo.ratedCapacity;
+            const MAX_EXTENSION = silo.maxExtension;
+            
+            if (w >= MAX_EXTENSION) {
+                 insights.push(`🛑 **خطر امتلاء:** ${silo.name} وصل إلى أقصى حد للتمديد (${w.toFixed(2)}T)!`);
+            } else if (w > RATED_CAPACITY) {
+                insights.push(`🚨 **تحذير:** ${silo.name} يعمل في وضع التمديد (${w.toFixed(2)}T)! يرجى المراقبة.`);
+            } else if (w >= (RATED_CAPACITY * 0.9)) {
+                insights.push(`🔔 **تنبيه:** ${silo.name} اقترب من الامتلاء الرسمي (${w.toFixed(2)}/${RATED_CAPACITY.toFixed(1)}).`);
+            }
+        });
+
+        currentAiAnalysis = {
+            total: totalCurrent.toFixed(2),
+            speed: finalSpeed.toFixed(1),
+            duration: totalDurationHrs.toFixed(2),
+            insights: insights.map(i => i.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')),
+            lastUpdate: lastUpdateTime
+        };
+
+        if (insights.length === 0) insights.push("✅ سير العمل طبيعي، لا توجد ملاحظات خاصة.");
+        insightsList.innerHTML = insights.map(i => `<li>${i.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('');
+    }
+
+    // ==========================================
+    // 💾 وظائف الإنهاء والأرشيف
+    // ==========================================
+
+    async function factoryReset() {
+        if(confirm("⚠️ تأكيد حذف نهائي لجميع بيانات التطبيق (بما في ذلك السجلات والأرشيف والإعدادات) من Firebase؟ لا يمكن التراجع!")) {
+             try {
+                // حذف مسار المستخدم الحالي
+                await database.ref(DB_ROOT_PATH + 'sessions/' + currentUserId).remove();
+                await database.ref(DB_ROOT_PATH + 'history/' + currentUserId).remove();
+                
+                // حذف الإعدادات العامة (يجب أن يتم ذلك بواسطة مسؤول فقط)
+                // if (auth.currentUser.email === ADMIN_EMAIL) {
+                //     await database.ref(DB_ROOT_PATH + SETTINGS_PATH).remove();
+                // }
+
+                // حذف حساب المستخدم
+                await auth.currentUser.delete();
+
+                alert("تمت عملية إعادة ضبط المصنع وحذف الحساب بنجاح. سيتم تسجيل الخروج.");
+            } catch (error) {
+                 // عرض رسالة خطأ واضحة للمستخدم
+                if (error.code === 'auth/requires-recent-login') {
+                    alert("❌ خطأ: لإجراء هذا الحذف الحساس، يجب عليك تسجيل الخروج ثم الدخول مرة أخرى لإثبات هويتك.");
+                } else {
+                    alert("❌ خطأ في عملية الحذف من Firebase: " + error.message);
+                }
+            }
+        }
+    }
+
+    async function endWork() {
+        if(currentSessionRecords.length===0) return alert('لا يوجد بيانات لتسجيلها.');
+        if(!confirm('إنهاء الجلسة وحفظها إلى الأرشيف؟')) return;
+        
+        performSmartAIAnalysis(); 
+        
+        const h = await loadUserHistory(); // ☁️ تحميل الأرشيف من Firebase
+        h.push({ date: new Date().toISOString(), 
+                 total: currentAiAnalysis.total, 
+                 speed: currentAiAnalysis.speed, 
+                 duration: currentAiAnalysis.duration, 
+                 aiReport: currentAiAnalysis.insights, 
+                 records: currentSessionRecords 
+               });
+        
+        await saveUserHistory(h); // ☁️ حفظ الأرشيف كاملاً في Firebase
+        
+        // مسح الجلسة الحالية من Firebase
+        await database.ref(DB_ROOT_PATH + 'sessions/' + currentUserId).remove();
+        
+        location.reload();
+    }
+
+    async function viewHistory() {
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('historyPage').style.display = 'block';
+        
+        const h = await loadUserHistory(); // ☁️ تحميل الأرشيف من Firebase
+        
+        if(h.length > 0) {
+            let maxRec = h.reduce((p, c) => (parseFloat(p.total) > parseFloat(c.total)) ? p : c);
+            document.getElementById('bestDateDisplay').textContent = formatDateOnly(maxRec.date);
+            document.getElementById('bestAmountDisplay').textContent = maxRec.total;
+        } else {
+             document.getElementById('bestDateDisplay').textContent = 'لا يوجد';
+             document.getElementById('bestAmountDisplay').textContent = '0.00';
+        }
+
+        const tb = document.getElementById('historyBody');
+        tb.innerHTML = '';
+        [...h].reverse().forEach(x => {
+            // للتمرير الآمن كمعامل لدالة JavaScript
+            const jsonX = JSON.stringify(x).replace(/'/g, "\\'"); 
+            tb.innerHTML += `<tr>
+                <td>${formatDateOnly(x.date)}</td> 
+                <td>${x.total}</td>
+                <td>${x.speed || '-'}</td> 
+                <td><button class="secondary-btn small-btn" onclick='showDetails(${jsonX})'>عرض</button></td>
+            </tr>`;
+        });
+    }
+
+    function showDetails(x) {
+         const tb = document.getElementById('modalRecordsBody');
+        tb.innerHTML = '';
+        
+        const aiSummary = document.getElementById('modalAiSummary');
+        let reportHTML = `<p><strong>الإجمالي:</strong> ${x.total} طن / <strong>المدة:</strong> ${x.duration || '-'} ساعة</p>`;
+        reportHTML += `<p><strong>متوسط السرعة:</strong> ${x.speed || '-'} طن/ساعة</p>`;
+        
+        if(x.aiReport && x.aiReport.length > 0) {
+            reportHTML += `<h4>ملاحظات النظام:</h4><ul style="list-style: disc; margin-right: 20px;">${x.aiReport.map(i => `<li>${i}</li>`).join('')}</ul>`;
+        } else {
+             reportHTML += `<p>لا توجد ملاحظات ذكية مسجلة لهذه الجلسة.</p>`;
+        }
+        aiSummary.innerHTML = reportHTML;
+
+
+        x.records.forEach(r => {
+            const diffColor = parseFloat(r.difference) > 0 ? 'green' : (parseFloat(r.difference) < 0 ? 'red' : 'inherit');
+            tb.innerHTML += `
+            <tr>
+                <td>${formatDateTimeEnglish(r.dateTime)}</td>
+                <td>${r.siloun}</td>
+                <td>${r.weight}</td>
+                <td style="color:${diffColor}">${r.difference}</td>
+            </tr>
+        `});
+        document.getElementById('sessionDetailsModal').style.display = 'block';
+    }
+
+    // ==========================================
+    // ⚙️ وظائف الإعدادات
+    // ==========================================
+    
+    function showSettingsModal() {
+        renderSiloSettings();
+        document.getElementById('blinkSpeedInput').value = AppSettings.BLINK_SPEED;
+        document.getElementById('highWeightColorInput').value = AppSettings.HIGH_WEIGHT_COLOR;
+        document.getElementById('extensionColorInput').value = AppSettings.EXTENSION_COLOR;
+        document.getElementById('settingsModal').style.display = 'block';
+        document.getElementById('settingsMessage').style.display = 'none';
+    }
+
+    function hideSettingsModal() {
+        document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    function renderSiloSettings() {
+        const container = document.getElementById('siloSettingsContainer');
+        container.innerHTML = AppSettings.SILOS.map((silo, index) => `
+            <div style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 6px;" id="silo-setting-${silo.id}">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <strong>الخزان ${index + 1}</strong>
+                    <button type="button" class="danger-btn small-btn" onclick="removeSiloSetting(${silo.id})">حذف 🗑️</button>
+                </div>
+                <label for="siloName${silo.id}">الاسم:</label>
+                <input type="text" id="siloName${silo.id}" value="${silo.name}" required>
+                <label for="siloCapacity${silo.id}">السعة المقدرة (طن):</label>
+                <input type="number" id="siloCapacity${silo.id}" value="${silo.ratedCapacity}" min="1" step="0.1" required>
+                <label for="siloExtension${silo.id}">أقصى سعة تمديد (طن):</label>
+                <input type="number" id="siloExtension${silo.id}" value="${silo.maxExtension}" min="1" step="0.1" required>
+            </div>
+        `).join('');
+    }
+
+    function addSiloSetting() {
+        const newId = AppSettings.SILOS.reduce((max, s) => Math.max(max, s.id), 0) + 1;
+        AppSettings.SILOS.push({ 
+            id: newId, 
+            name: `خزان جديد ${newId}`, 
+            ratedCapacity: 50.0, 
+            maxExtension: 60.0 
+        });
+        renderSiloSettings();
+    }
+
+    function removeSiloSetting(id) {
+        if (AppSettings.SILOS.length <= 1) return alert('يجب أن يكون لديك خزان واحد على الأقل.');
+        AppSettings.SILOS = AppSettings.SILOS.filter(s => s.id !== id);
+        renderSiloSettings();
+    }
+
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newSettings = {
+            BLINK_SPEED: parseFloat(document.getElementById('blinkSpeedInput').value),
+            HIGH_WEIGHT_COLOR: document.getElementById('highWeightColorInput').value,
+            EXTENSION_COLOR: document.getElementById('extensionColorInput').value,
+            NORMAL_COLOR: '#28a745', 
+            SILOS: AppSettings.SILOS.map(silo => ({
+                id: silo.id,
+                name: document.getElementById(`siloName${silo.id}`).value,
+                ratedCapacity: parseFloat(document.getElementById(`siloCapacity${silo.id}`).value),
+                maxExtension: parseFloat(document.getElementById(`siloExtension${silo.id}`).value),
+            })).filter(s => s.ratedCapacity <= s.maxExtension) // تصفية لضمان المنطقية
+        };
+        
+        if (newSettings.SILOS.length !== AppSettings.SILOS.length) {
+            alert("خطأ: تأكد من أن السعة المقدرة أقل من أو تساوي أقصى سعة تمديد لكل خزان.");
+            return;
+        }
+
+        AppSettings = newSettings;
+        
+        try {
+            await saveSettings();
+            applySettingsToUI();
+            document.getElementById('settingsMessage').textContent = '✅ تم حفظ الإعدادات بنجاح.';
+            document.getElementById('settingsMessage').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('settingsModal').style.display = 'none';
+            }, 1500);
+        } catch (error) {
+            document.getElementById('settingsMessage').textContent = `❌ خطأ في الحفظ: ${error.message}`;
+            document.getElementById('settingsMessage').style.color = 'red';
+            document.getElementById('settingsMessage').style.display = 'block';
+        }
+    });
+
+    // ==========================================
+    // 📊 وظائف الرسوم البيانية
+    // ==========================================
+
+    let currentWeightsChartInstance = null;
+    let currentDifferencesChartInstance = null;
+    let historyTotalChartInstance = null;
+    let historySpeedChartInstance = null;
+
+    function renderCurrentWeightsChart() {
+        if (currentWeightsChartInstance) currentWeightsChartInstance.destroy();
+        
+        const siloNames = AppSettings.SILOS.map(s => s.name);
+        const currentData = siloNames.map(name => lastKnownWeights[name] || 0);
+        const ratedCapacities = AppSettings.SILOS.map(s => s.ratedCapacity);
+
+        currentWeightsChartInstance = new Chart(document.getElementById('currentWeightsChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: siloNames,
+                datasets: [
+                    {
+                        label: 'الوزن الحالي (T)',
+                        data: currentData,
+                        backgroundColor: currentData.map((w, i) => w >= ratedCapacities[i] ? AppSettings.EXTENSION_COLOR : AppSettings.NORMAL_COLOR),
+                    }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    function renderCurrentDifferencesChart() {
+         if (currentDifferencesChartInstance) currentDifferencesChartInstance.destroy();
+
+        if (currentSessionRecords.length === 0) return;
+        
+        const siloNames = AppSettings.SILOS.map(s => s.name);
+        let datasets = [];
+        
+        siloNames.forEach(silo => {
+            const records = currentSessionRecords.filter(r => r.siloun === silo && r.difference !== 'بداية');
+            if (records.length > 0) {
+                datasets.push({
+                    label: silo,
+                    data: records.map(r => ({
+                        x: formatDateTimeEnglish(r.dateTime),
+                        y: parseFloat(r.difference)
+                    })),
+                    tension: 0.2,
+                    borderColor: getRandomColor(),
+                    backgroundColor: 'rgba(0,0,0,0)',
+                    pointRadius: 5
+                });
+            }
+        });
+
+        currentDifferencesChartInstance = new Chart(document.getElementById('currentDifferencesChart').getContext('2d'), {
+            type: 'line',
+            data: { datasets: datasets },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                scales: { 
+                    y: { beginAtZero: false, title: { display: true, text: 'الفرق (T)' } },
+                    x: { title: { display: true, text: 'الوقت' } }
+                } 
+            }
+        });
+    }
+
+    async function renderHistoryCharts() {
+        const history = await loadUserHistory();
+        const dates = history.map(h => formatDateOnly(h.date));
+        const totals = history.map(h => parseFloat(h.total));
+        const speeds = history.map(h => parseFloat(h.speed || 0));
+
+        // Total Chart
+        if (historyTotalChartInstance) historyTotalChartInstance.destroy();
+        historyTotalChartInstance = new Chart(document.getElementById('historyTotalChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: dates,
+                datasets: [{ label: 'إجمالي الإنتاج (T)', data: totals, backgroundColor: '#17a2b8' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+
+        // Speed Chart
+        if (historySpeedChartInstance) historySpeedChartInstance.destroy();
+        historySpeedChartInstance = new Chart(document.getElementById('historySpeedChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{ label: 'متوسط السرعة (T/h)', data: speeds, borderColor: '#ffc107', tension: 0.3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) { color += letters[Math.floor(Math.random() * 16)]; }
+        return color;
+    }
+
+    function showChartsModal() {
+        renderCurrentWeightsChart();
+        renderCurrentDifferencesChart();
+        renderHistoryCharts();
+        document.getElementById('chartsModal').style.display = 'block';
+    }
+
+    function hideChartsModal() {
+        document.getElementById('chartsModal').style.display = 'none';
+    }
+
+    function hideHistory() {
+        document.getElementById('historyPage').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+    }
+
+    // ==========================================
+    // ⬇️ وظائف الاستيراد والتصدير (للبقاء على التوافق)
+    // ==========================================
+
+    async function exportData() {
+        const data = {
+            settings: AppSettings,
+            currentSession: currentSessionRecords,
+            history: await loadUserHistory()
+        };
+        const dataStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `molino_backup_${formatDateOnly(new Date().toISOString())}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    async function importData(input) {
+        if (!input.files.length) return;
+        if (!confirm('سيؤدي استيراد البيانات إلى مسح واستبدال بيانات جلسة العمل الحالية في Firebase. هل أنت متأكد؟')) return;
+
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                
+                if (importedData.settings) {
+                    await database.ref(DB_ROOT_PATH + SETTINGS_PATH).set(importedData.settings);
+                    alert("تم استيراد وحفظ الإعدادات بنجاح.");
+                }
+
+                if (importedData.currentSession && currentUserId) {
+                    const sessionObject = importedData.currentSession.reduce((obj, rec) => { obj[rec.id] = rec; return obj; }, {});
+                    await database.ref(DB_ROOT_PATH + 'sessions/' + currentUserId).set(sessionObject);
+                }
+
+                if (importedData.history && currentUserId) {
+                    const historyObject = importedData.history.reduce((obj, rec) => { obj[new Date(rec.date).getTime()] = rec; return obj; }, {});
+                    await database.ref(DB_ROOT_PATH + 'history/' + currentUserId).set(historyObject);
+                }
+
+                alert('✅ تم استيراد البيانات إلى Firebase بنجاح. سيتم إعادة تحميل التطبيق.');
+                location.reload();
+
+            } catch (error) {
+                alert('❌ خطأ في قراءة ملف الاستيراد أو حفظ البيانات: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+</script>
+
+</body>
+</html>
+
